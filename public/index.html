@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gestor de Tareas</title>
+        <link href="/styles.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100 min-h-screen">
+        <div class="container mx-auto px-4 py-8">
+            <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Gestor
+                de Tareas</h1>
+
+            <!-- Formulario para agregar tarea -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4">Agregar Nueva Tarea</h2>
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        id="nuevaTareaInput"
+                        placeholder="Descripción de la tarea"
+                        class="flex-grow px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button
+                        id="agregarTareaBtn"
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-200">
+                        Agregar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de tareas -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Lista de Tareas</h2>
+                <div id="listaTareas" class="space-y-2">
+                    <!-- Las tareas se agregarán aquí dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // Función para cargar tareas
+        async function cargarTareas() {
+            const response = await fetch('/tareas');
+            const tareas = await response.json();
+            const listaTareas = document.getElementById('listaTareas');
+            listaTareas.innerHTML = '';
+
+            if (tareas.length === 0) {
+                listaTareas.innerHTML = '<p class="text-gray-500">No hay tareas registradas</p>';
+                return;
+            }
+
+            tareas.forEach(tarea => {
+                const tareaElement = document.createElement('div');
+                tareaElement.className = `flex items-center justify-between p-3 border rounded-lg ${tarea.completado ? 'bg-gray-50' : ''}`;
+                tareaElement.innerHTML = `
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            ${tarea.completado ? 'checked' : ''} 
+                            data-id="${tarea.id}"
+                            class="mr-3 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        >
+                        <span class="${tarea.completado ? 'line-through text-gray-500' : 'text-gray-800'}">${tarea.titulo}</span>
+                    </div>
+                    <button 
+                        data-id="${tarea.id}" 
+                        class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition duration-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                `;
+                listaTareas.appendChild(tareaElement);
+            });
+
+            // Agregar eventos a los checkboxes
+            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const id = parseInt(e.target.dataset.id);
+                    await fetch(`/tareas/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            completado: e.target.checked
+                        })
+                    });
+                    cargarTareas();
+                });
+            });
+
+            // Agregar eventos a los botones de eliminar
+            document.querySelectorAll('button[data-id]').forEach(btn => {
+                if (!btn.hasAttribute('type')) {
+                    btn.addEventListener('click', async (e) => {
+                        const id = parseInt(e.target.closest('button').dataset.id);
+                        await fetch(`/tareas/${id}`, {
+                            method: 'DELETE'
+                        });
+                        cargarTareas();
+                    });
+                }
+            });
+        }
+
+        // Agregar nueva tarea
+        document.getElementById('agregarTareaBtn').addEventListener('click', async () => {
+            const input = document.getElementById('nuevaTareaInput');
+            const titulo = input.value.trim();
+
+            if (titulo) {
+                await fetch('/tareas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        titulo: titulo
+                    })
+                });
+                input.value = '';
+                cargarTareas();
+            }
+        });
+
+        // Cargar tareas al iniciar
+        document.addEventListener('DOMContentLoaded', cargarTareas);
+    </script>
+    </body>
+</html>
